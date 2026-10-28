@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ClaimFlow · Claims Console</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff612b'/%3E%3Cpath d='M16 8v16M8 16h16' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">+</div>
+      <div>
+        <h1>ClaimFlow</h1>
+        <p class="muted">Health plan claims console · Spring Boot microservices over Kafka</p>
+      </div>
+    </div>
+    <div class="pipeline" aria-label="How a claim flows">
+      <span>claims-service</span><i>→</i><span class="kafka">Kafka</span><i>→</i><span>adjudication</span><i>→</i><span class="kafka">Kafka</span><i>→</i><span>decision</span>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Totals">
+    <div class="kpi"><div class="k">Submitted</div><div class="v" id="kpi-SUBMITTED">0</div></div>
+    <div class="kpi ok"><div class="k">Approved</div><div class="v" id="kpi-APPROVED">0</div></div>
+    <div class="kpi bad"><div class="k">Denied</div><div class="v" id="kpi-DENIED">0</div></div>
+    <div class="kpi warn"><div class="k">Pended for review</div><div class="v" id="kpi-PENDED">0</div></div>
+    <div class="kpi accent"><div class="k">Paid by plans</div><div class="v" id="kpi-paid">$0</div></div>
+  </section>
+
+  <main class="layout">
+    <section class="card">
+      <h2>Submit a claim</h2>
+      <form id="claim-form" novalidate>
+        <label>Member
+          <select id="member" required></select>
+        </label>
+        <div class="member-info" id="member-info"></div>
+        <label>Service
+          <select id="serviceType" required>
+            <option value="PRIMARY_CARE">Primary care visit</option>
+            <option value="SPECIALIST">Specialist visit</option>
+            <option value="LAB">Lab test</option>
+            <option value="IMAGING">Imaging (X-ray, MRI)</option>
+            <option value="PHARMACY">Pharmacy</option>
+            <option value="EMERGENCY">Emergency</option>
+          </select>
+        </label>
+        <div class="row2">
+          <label>Date of service
+            <input id="serviceDate" type="date" required>
+          </label>
+          <label>Billed amount ($)
+            <input id="amount" type="number" min="0.01" step="0.01" placeholder="250.00" required>
+          </label>
+        </div>
+        <label>Provider
+          <input id="provider" type="text" maxlength="120" placeholder="City Health Clinic" required>
+        </label>
+        <p class="error" id="error" role="alert" hidden></p>
+        <button id="submit" type="submit">Submit claim</button>
+      </form>
+    </section>
+
+    <section class="card wide">
+      <div class="card-head">
+        <h2>Recent claims</h2>
+        <span class="muted small">Updates live · click a claim for its history</span>
+      </div>
+      <div class="table-wrap">
+        <table id="claims">
+          <thead>
+            <tr><th>Claim</th><th>Member</th><th>Service</th><th class="num">Billed</th><th>Status</th><th class="num">Plan pays</th><th class="num">Member pays</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p class="empty muted" id="empty">No claims yet. Submit one on the left.</p>
+      </div>
+      <aside class="detail" id="detail" hidden></aside>
+    </section>
+  </main>
+
+  <footer class="muted small">Demo data only: fictional members and plans.</footer>
+  <script src="app.js"></script>
+</body>
+</html>

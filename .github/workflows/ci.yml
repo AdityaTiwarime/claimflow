@@ -1,0 +1,72 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: Build + JUnit (unit, Kafka, API, full flow)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: mvn -B verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: "**/target/surefire-reports"
+
+  selenium:
+    name: Selenium UI tests (headless Chrome)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          install-chromedriver: true
+      - run: mvn -B verify -Pe2e -Dwebdriver.chrome.driver=${{ steps.chrome.outputs.chromedriver-path }}
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+
+  docker:
+    name: Docker stack smoke test (MySQL, MongoDB, Kafka)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build -d --wait
+      - name: Submit a claim and wait for the decision
+        run: |
+          id=$(curl -fsS -X POST localhost:8081/api/claims -H 'Content-Type: application/json' \
+            -d '{"memberNumber":"M-1001","serviceType":"SPECIALIST","serviceDate":"2026-03-15","providerName":"CI Clinic","billedAmount":2000}' \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          echo "claim $id"
+          for i in $(seq 1 30); do
+            status=$(curl -fsS localhost:8081/api/claims/$id | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+            echo "status $status"
+            [ "$status" = "APPROVED" ] && break
+            sleep 2
+          done
+          curl -fsS localhost:8081/api/claims/$id | python3 -c '
+          import json, sys
+          c = json.load(sys.stdin)
+          assert c["status"] == "APPROVED", c
+          assert float(c["planPays"]) == 1800.0, c
+          assert [e["type"] for e in c["timeline"]][0] == "SUBMITTED", c["timeline"]
+          print("ok: approved, plan pays", c["planPays"], "timeline from MongoDB:", [e["type"] for e in c["timeline"]])'
+      - if: failure()
+        run: docker compose logs

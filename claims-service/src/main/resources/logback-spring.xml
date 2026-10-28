@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+  <!-- With the "splunk" profile, logs also go to Splunk's HTTP Event Collector. -->
+  <springProfile name="splunk">
+    <springProperty name="hecUrl" source="splunk.hec.url" defaultValue="http://localhost:8088/services/collector/event"/>
+    <springProperty name="hecToken" source="splunk.hec.token"/>
+    <appender name="SPLUNK" class="com.claimflow.logging.SplunkHecAppender">
+      <url>${hecUrl}</url>
+      <token>${hecToken}</token>
+      <source>claims-service</source>
+      <sourcetype>_json</sourcetype>
+    </appender>
+    <logger name="com.claimflow" level="INFO" additivity="true">
+      <appender-ref ref="SPLUNK"/>
+    </logger>
+  </springProfile>
+</configuration>
